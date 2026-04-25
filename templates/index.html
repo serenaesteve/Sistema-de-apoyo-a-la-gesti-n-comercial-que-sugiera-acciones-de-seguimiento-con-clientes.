@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · CRMpro{% endblock %}
+
+{% block head %}
+<style>
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+.stat-card:hover { border-color: #3a3a5a; }
+.stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+}
+.stat-card.c1::after { background: linear-gradient(90deg, var(--accent), transparent); }
+.stat-card.c2::after { background: linear-gradient(90deg, var(--accent2), transparent); }
+.stat-card.c3::after { background: linear-gradient(90deg, var(--danger), transparent); }
+.stat-card.c4::after { background: linear-gradient(90deg, var(--accent3), transparent); }
+.stat-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-value { font-family: 'Syne', sans-serif; font-size: 2.1rem; font-weight: 800; margin: 8px 0 3px; letter-spacing: -1.5px; line-height: 1; }
+.stat-sub { font-size: 0.78rem; color: var(--text-muted); }
+.stat-icon { position: absolute; top: 16px; right: 16px; opacity: 0.08; font-size: 2.5rem; }
+
+.row-2 { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.row-3 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+
+/* Seguimientos */
+.seg-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+}
+.seg-item:last-child { border-bottom: none; }
+.seg-prioridad { flex-shrink: 0; margin-top: 2px; }
+.seg-body { flex: 1; min-width: 0; }
+.seg-cliente { font-size: 0.87rem; font-weight: 600; }
+.seg-accion { font-size: 0.8rem; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seg-meta { font-size: 0.73rem; color: var(--text-muted); margin-top: 3px; display: flex; gap: 8px; align-items: center; }
+
+/* Actividad */
+.act-item {
+    display: flex;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+}
+.act-item:last-child { border-bottom: none; }
+.act-icon {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+.act-icon.llamada { background: rgba(124,111,247,0.15); }
+.act-icon.email { background: rgba(247,198,111,0.15); }
+.act-icon.reunión { background: rgba(111,247,184,0.15); }
+.act-body { flex: 1; min-width: 0; }
+.act-nombre { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-desc { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-fecha { font-size: 0.73rem; color: var(--text-muted); margin-top: 1px; }
+
+/* Top clientes */
+.cli-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+.cli-row:last-child { border-bottom: none; }
+.cli-row:hover { opacity: 0.75; }
+.cli-av {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+.cli-info { flex: 1; min-width: 0; }
+.cli-nombre { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cli-empresa { font-size: 0.76rem; color: var(--text-muted); }
+.cli-valor { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9rem; color: var(--accent2); }
+
+/* Barras sector */
+.sector-bar { margin-bottom: 14px; }
+.sector-label { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 5px; }
+.sector-label span:last-child { color: var(--text-muted); font-size: 0.76rem; }
+.bar-bg { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), #a090ff); transition: width 1s ease; }
+</style>
+{% endblock %}
+
+{% block topbar_title %}<strong>Dashboard</strong>{% endblock %}
+{% block topbar_actions %}
+<a href="/clientes" class="btn btn-secondary btn-sm">Ver clientes</a>
+<button class="btn btn-primary btn-sm" onclick="document.getElementById('modalCliente').classList.add('open')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Nuevo cliente
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- STATS -->
+<div class="stats-grid">
+    <div class="stat-card c1">
+        <div class="stat-icon">👥</div>
+        <div class="stat-label">Clientes activos</div>
+        <div class="stat-value">{{ stats.activos }}</div>
+        <div class="stat-sub">{{ stats.prospectos }} prospectos · {{ stats.inactivos }} inactivos</div>
+    </div>
+    <div class="stat-card c2">
+        <div class="stat-icon">💰</div>
+        <div class="stat-label">Pipeline total</div>
+        <div class="stat-value" style="color:var(--accent2)">{{ "{:,.0f}".format(stats.valor_pipeline) }}€</div>
+        <div class="stat-sub">Valor potencial del embudo</div>
+    </div>
+    <div class="stat-card c3">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-label">Seguimientos pendientes</div>
+        <div class="stat-value" style="color:var(--danger)">{{ stats.seguimientos_pendientes }}</div>
+        <div class="stat-sub">Acciones sin completar</div>
+    </div>
+    <div class="stat-card c4">
+        <div class="stat-icon">📊</div>
+        <div class="stat-label">Tasa de conversión</div>
+        <div class="stat-value" style="color:var(--accent3)">{{ stats.tasa_conversion }}%</div>
+        <div class="stat-sub">{{ stats.interacciones_mes }} interacciones este mes</div>
+    </div>
+</div>
+
+<!-- ROW 2 -->
+<div class="row-2">
+    <!-- Seguimientos pendientes -->
+    <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin:0">🔔 Seguimientos pendientes</div>
+            <a href="/clientes" class="btn btn-ghost btn-sm" style="font-size:0.78rem">Ver todos →</a>
+        </div>
+        {% if seguimientos_pendientes %}
+            {% for s in seguimientos_pendientes %}
+            <div class="seg-item" id="seg-{{ s.id }}">
+                <div class="seg-prioridad">
+                    <span class="badge badge-{{ s.prioridad }}">{{ s.prioridad }}</span>
+                </div>
+                <div class="seg-body">
+                    <div class="seg-cliente">
+                        <a href="/cliente/{{ s.cliente_id }}" style="text-decoration:none;color:var(--text)">{{ s.nombre }}</a>
+                        <span style="color:var(--text-muted);font-weight:400;font-size:0.8rem"> · {{ s.empresa }}</span>
+                    </div>
+                    <div class="seg-accion">{{ s.accion }}</div>
+                    <div class="seg-meta">
+                        📅 {{ s.fecha_sugerida }}
+                        {% if s.generado_ia %}<span style="color:var(--accent)">✦IA</span>{% endif %}
+                    </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" style="flex-shrink:0" onclick="completarSeg({{ s.id }}, this)" title="Marcar completado">✓</button>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div style="font-size:2rem">🎉</div>
+                <p>¡Todo al día! Sin seguimientos pendientes</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Actividad reciente -->
+    <div class="card">
+        <div class="card-title">📋 Actividad reciente</div>
+        {% for act in actividad_reciente %}
+        <div class="act-item">
+            <div class="act-icon {{ act.tipo }}">
+                {% if act.tipo == 'llamada' %}📞{% elif act.tipo == 'email' %}✉️{% else %}🤝{% endif %}
+            </div>
+            <div class="act-body">
+                <div class="act-nombre">{{ act.nombre }}</div>
+                <div class="act-desc">{{ act.descripcion or act.tipo }}</div>
+                <div class="act-fecha">{{ act.fecha }} ·
+                    <span style="color:{% if act.resultado == 'positivo' %}var(--accent3){% elif act.resultado == 'sin respuesta' %}var(--danger){% else %}var(--text-muted){% endif %}">
+                        {{ act.resultado }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state"><p>Sin actividad registrada</p></div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ROW 3 -->
+<div class="row-3">
+    <!-- Top clientes -->
+    <div class="card">
+        <div class="card-title">⭐ Top clientes por valor potencial</div>
+        {% for c in clientes_top %}
+        <a href="/cliente/{{ c.id }}" class="cli-row">
+            <div class="cli-av">{{ c.nombre[0] }}</div>
+            <div class="cli-info">
+                <div class="cli-nombre">{{ c.nombre }}</div>
+                <div class="cli-empresa">{{ c.empresa }} <span class="dot dot-{{ c.estado }}"></span></div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+                <div class="cli-valor">{{ "{:,.0f}".format(c.valor_potencial) }}€</div>
+                <div style="font-size:0.72rem;color:var(--text-muted)">{{ c.total_interacciones }} interacc.</div>
+            </div>
+        </a>
+        {% else %}
+        <div class="empty-state"><p>Sin clientes aún. <a href="#" onclick="document.getElementById('modalCliente').classList.add('open')" style="color:var(--accent)">Crea el primero</a></p></div>
+        {% endfor %}
+    </div>
+
+    <!-- Sectores -->
+    <div class="card">
+        <div class="card-title">📊 Pipeline por sector</div>
+        {% if sector_data %}
+            {% set max_val = sector_data | map(attribute='valor') | max %}
+            {% for s in sector_data %}
+            <div class="sector-bar">
+                <div class="sector-label">
+                    <span>{{ s.sector }}</span>
+                    <span>{{ "{:,.0f}".format(s.valor) }}€ · {{ s.total }} cli.</span>
+                </div>
+                <div class="bar-bg">
+                    <div class="bar-fill" style="width:{{ [(s.valor / max_val * 100)|int, 5]|max }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state"><p>Sin datos de sectores</p></div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- MODAL nuevo cliente -->
+<div class="modal-overlay" id="modalCliente">
+    <div class="modal">
+        <h2>✨ Nuevo cliente</h2>
+        <div class="form-row">
+            <div class="form-group"><label>Nombre *</label><input type="text" id="nc-nombre" placeholder="Nombre completo"></div>
+            <div class="form-group"><label>Empresa</label><input type="text" id="nc-empresa" placeholder="Empresa SL"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Email</label><input type="email" id="nc-email" placeholder="email@empresa.es"></div>
+            <div class="form-group"><label>Teléfono</label><input type="text" id="nc-tel" placeholder="+34 6XX XXX XXX"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Sector</label>
+                <select id="nc-sector">
+                    <option value="">-- Sector --</option>
+                    <option>Tecnología</option><option>Retail</option><option>Distribución</option>
+                    <option>Consultoría</option><option>Logística</option><option>Industria</option><option>Servicios</option><option>Otro</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Estado</label>
+                <select id="nc-estado">
+                    <option value="prospecto">Prospecto</option>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group"><label>Valor potencial (€)</label><input type="number" id="nc-valor" placeholder="5000" min="0"></div>
+        <div class="form-group"><label>Notas</label><textarea id="nc-notas" rows="2" placeholder="Observaciones iniciales..."></textarea></div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="document.getElementById('modalCliente').classList.remove('open')">Cancelar</button>
+            <button class="btn btn-primary" onclick="crearCliente()">Crear cliente</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function completarSeg(id, btn) {
+    const res = await api(`/api/seguimiento/${id}/completar`, 'POST');
+    if (res.ok) {
+        const item = document.getElementById(`seg-${id}`);
+        item.style.transition = 'all 0.3s';
+        item.style.opacity = '0';
+        item.style.height = '0';
+        item.style.overflow = 'hidden';
+        item.style.padding = '0';
+        setTimeout(() => item.remove(), 300);
+        toast('Seguimiento completado ✓');
+    }
+}
+
+async function crearCliente() {
+    const nombre = document.getElementById('nc-nombre').value.trim();
+    if (!nombre) { toast('El nombre es obligatorio', 'error'); return; }
+    const res = await api('/api/cliente', 'POST', {
+        nombre,
+        empresa: document.getElementById('nc-empresa').value,
+        email: document.getElementById('nc-email').value,
+        telefono: document.getElementById('nc-tel').value,
+        sector: document.getElementById('nc-sector').value,
+        estado: document.getElementById('nc-estado').value,
+        valor_potencial: document.getElementById('nc-valor').value || 0,
+        notas: document.getElementById('nc-notas').value,
+    });
+    if (res.ok) { toast('Cliente creado'); setTimeout(() => location.reload(), 900); }
+    else toast('Error al crear cliente', 'error');
+}
+</script>
+{% endblock %}

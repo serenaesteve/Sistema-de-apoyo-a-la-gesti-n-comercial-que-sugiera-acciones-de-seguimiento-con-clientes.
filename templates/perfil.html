@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Mi perfil · CRMpro{% endblock %}
+
+{% block head %}
+<style>
+.perfil-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.stats-mini { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-mini {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+}
+.stat-mini-val { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; letter-spacing: -1px; }
+.stat-mini-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+.success-msg {
+    background: rgba(111,247,184,0.1);
+    border: 1px solid rgba(111,247,184,0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: var(--accent3);
+    margin-bottom: 18px;
+}
+.error-msg {
+    background: rgba(247,111,111,0.1);
+    border: 1px solid rgba(247,111,111,0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: var(--danger);
+    margin-bottom: 18px;
+}
+</style>
+{% endblock %}
+
+{% block topbar_title %}<strong>Mi perfil</strong>{% endblock %}
+
+{% block content %}
+<!-- MINI STATS -->
+<div class="stats-mini">
+    <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--accent)">{{ stats.clientes }}</div>
+        <div class="stat-mini-label">Clientes gestionados</div>
+    </div>
+    <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--accent2)">{{ stats.interacciones }}</div>
+        <div class="stat-mini-label">Interacciones registradas</div>
+    </div>
+    <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--danger)">{{ stats.seguimientos }}</div>
+        <div class="stat-mini-label">Seguimientos creados</div>
+    </div>
+    <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--accent3)">{{ stats.completados }}</div>
+        <div class="stat-mini-label">Seguimientos completados</div>
+    </div>
+</div>
+
+<div class="perfil-grid">
+    <!-- Datos del perfil -->
+    <div class="card">
+        <div class="card-title">👤 Datos personales</div>
+
+        {% if success %}
+        <div class="success-msg">✓ {{ success }}</div>
+        {% endif %}
+        {% if error %}
+        <div class="error-msg">⚠️ {{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="/perfil">
+            <input type="hidden" name="accion" value="perfil">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" name="nombre" value="{{ user.nombre }}" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" value="{{ user.email }}" disabled style="opacity:0.5;cursor:not-allowed">
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">El email no se puede cambiar</div>
+            </div>
+            <div class="form-group">
+                <label>Miembro desde</label>
+                <input value="{{ user.fecha_registro }}" disabled style="opacity:0.5;cursor:not-allowed">
+            </div>
+            <div class="form-group">
+                <label>Rol</label>
+                <input value="{{ user.rol }}" disabled style="opacity:0.5;cursor:not-allowed;text-transform:capitalize">
+            </div>
+            <div style="margin-top:16px">
+                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Cambiar contraseña -->
+    <div class="card">
+        <div class="card-title">🔒 Cambiar contraseña</div>
+        <form method="POST" action="/perfil">
+            <input type="hidden" name="accion" value="password">
+            <div class="form-group">
+                <label>Contraseña actual</label>
+                <input type="password" name="actual" placeholder="••••••••" required>
+            </div>
+            <div class="form-group">
+                <label>Nueva contraseña <span style="color:var(--text-muted);font-weight:400">(mín. 6 caracteres)</span></label>
+                <input type="password" name="nueva" placeholder="••••••••" required>
+            </div>
+            <div class="form-group">
+                <label>Confirmar nueva contraseña</label>
+                <input type="password" name="nueva2" placeholder="••••••••" required>
+            </div>
+            <div style="margin-top:16px">
+                <button type="submit" class="btn btn-primary">Actualizar contraseña</button>
+            </div>
+        </form>
+
+        <hr class="divider">
+
+        <div class="card-title" style="margin-bottom:12px">⚙️ Sesión</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:0.85rem;color:var(--text-muted)">
+                Has iniciado sesión como <strong style="color:var(--text)">{{ user.email }}</strong>
+            </div>
+            <a href="/logout" class="btn btn-danger btn-sm" style="width:fit-content">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Cerrar sesión
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}Clientes · CRMpro{% endblock %}
+
+{% block head %}
+<style>
+.filtros-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.filtros-bar input, .filtros-bar select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.87rem;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.filtros-bar input:focus, .filtros-bar select:focus { border-color: var(--accent); }
+.filtros-bar input { min-width: 200px; }
+.filtros-bar select option { background: var(--surface2); }
+
+.tabla-clientes { width: 100%; border-collapse: collapse; }
+.tabla-clientes th {
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+}
+.tabla-clientes td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.87rem;
+    vertical-align: middle;
+}
+.tabla-clientes tr:last-child td { border-bottom: none; }
+.tabla-clientes tbody tr { transition: background 0.12s; cursor: pointer; }
+.tabla-clientes tbody tr:hover { background: var(--surface2); }
+
+.nombre-cell { font-weight: 600; }
+.empresa-cell { color: var(--text-muted); font-size: 0.8rem; margin-top: 1px; }
+
+.pendientes-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px; height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(247,111,111,0.15);
+    color: var(--danger);
+}
+
+.orden-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+}
+.orden-btn.active, .orden-btn:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+{% endblock %}
+
+{% block topbar_title %}<strong>Clientes</strong>{% endblock %}
+{% block topbar_actions %}
+<button class="btn btn-primary btn-sm" onclick="document.getElementById('modalCliente').classList.add('open')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Nuevo cliente
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="filtros-bar">
+    <input type="text" id="buscar" placeholder="🔍  Buscar nombre o empresa..." value="{{ q }}">
+    <select id="filtroEstado">
+        <option value="">Todos los estados</option>
+        <option value="activo" {% if filtro_estado=='activo' %}selected{% endif %}>✅ Activo</option>
+        <option value="prospecto" {% if filtro_estado=='prospecto' %}selected{% endif %}>🔵 Prospecto</option>
+        <option value="inactivo" {% if filtro_estado=='inactivo' %}selected{% endif %}>🔴 Inactivo</option>
+    </select>
+    <select id="filtroSector">
+        <option value="">Todos los sectores</option>
+        {% for s in sectores %}
+        <option value="{{ s.sector }}" {% if filtro_sector==s.sector %}selected{% endif %}>{{ s.sector }}</option>
+        {% endfor %}
+    </select>
+    <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+        <span style="font-size:0.8rem;color:var(--text-muted)">Ordenar:</span>
+        <button class="orden-btn {% if orden=='valor' %}active{% endif %}" onclick="setOrden('valor')">Por valor</button>
+        <button class="orden-btn {% if orden=='nombre' %}active{% endif %}" onclick="setOrden('nombre')">A-Z</button>
+        <button class="orden-btn {% if orden=='reciente' %}active{% endif %}" onclick="setOrden('reciente')">Reciente</button>
+    </div>
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <span style="color:var(--text-muted);font-size:0.85rem">{{ clientes|length }} cliente{{ 's' if clientes|length != 1 }}</span>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden">
+    <table class="tabla-clientes">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Sector</th>
+                <th>Estado</th>
+                <th>Valor potencial</th>
+                <th>Última interacción</th>
+                <th>Pendientes</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for c in clientes %}
+        <tr onclick="window.location='/cliente/{{ c.id }}'">
+            <td>
+                <div class="nombre-cell">{{ c.nombre }}</div>
+                <div class="empresa-cell">{{ c.empresa or '—' }}</div>
+            </td>
+            <td style="color:var(--text-muted)">{{ c.sector or '—' }}</td>
+            <td><span class="badge badge-{{ c.estado }}">{{ c.estado }}</span></td>
+            <td>
+                <span style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent2)">
+                    {{ "{:,.0f}".format(c.valor_potencial) }}€
+                </span>
+            </td>
+            <td style="color:var(--text-muted)">{{ c.ultima_interaccion or '—' }}</td>
+            <td>
+                {% if c.seg_pendientes > 0 %}
+                <span class="pendientes-pill">{{ c.seg_pendientes }}</span>
+                {% else %}
+                <span style="color:var(--text-muted)">—</span>
+                {% endif %}
+            </td>
+            <td onclick="event.stopPropagation()">
+                <div style="display:flex;gap:6px">
+                    <a href="/cliente/{{ c.id }}" class="btn btn-secondary btn-sm">Ver</a>
+                    <button class="btn btn-danger btn-sm" onclick="eliminarCliente({{ c.id }}, '{{ c.nombre }}')">✕</button>
+                </div>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7">
+                <div class="empty-state" style="padding:50px">
+                    <div style="font-size:2.5rem">🔍</div>
+                    <p style="margin-top:12px">No hay clientes que coincidan con los filtros</p>
+                    <button onclick="limpiarFiltros()" class="btn btn-secondary btn-sm" style="margin-top:12px">Limpiar filtros</button>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- MODAL nuevo cliente -->
+<div class="modal-overlay" id="modalCliente">
+    <div class="modal">
+        <h2>✨ Nuevo cliente</h2>
+        <div class="form-row">
+            <div class="form-group"><label>Nombre *</label><input type="text" id="nc-nombre" placeholder="Nombre completo"></div>
+            <div class="form-group"><label>Empresa</label><input type="text" id="nc-empresa" placeholder="Empresa SL"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Email</label><input type="email" id="nc-email" placeholder="email@empresa.es"></div>
+            <div class="form-group"><label>Teléfono</label><input type="text" id="nc-tel" placeholder="+34 6XX XXX XXX"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Sector</label>
+                <select id="nc-sector">
+                    <option value="">-- Sector --</option>
+                    <option>Tecnología</option><option>Retail</option><option>Distribución</option>
+                    <option>Consultoría</option><option>Logística</option><option>Industria</option><option>Servicios</option><option>Otro</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Estado</label>
+                <select id="nc-estado">
+                    <option value="prospecto">Prospecto</option>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group"><label>Valor potencial (€)</label><input type="number" id="nc-valor" placeholder="5000" min="0"></div>
+        <div class="form-group"><label>Notas</label><textarea id="nc-notas" rows="2" placeholder="Observaciones iniciales..."></textarea></div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="document.getElementById('modalCliente').classList.remove('open')">Cancelar</button>
+            <button class="btn btn-primary" onclick="crearCliente()">Crear cliente</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const params = new URLSearchParams(window.location.search);
+
+document.getElementById('buscar').addEventListener('keyup', function(e) {
+    if (e.key === 'Enter') filtrar();
+});
+document.getElementById('filtroEstado').addEventListener('change', filtrar);
+document.getElementById('filtroSector').addEventListener('change', filtrar);
+
+function filtrar() {
+    const q = document.getElementById('buscar').value;
+    const estado = document.getElementById('filtroEstado').value;
+    const sector = document.getElementById('filtroSector').value;
+    const orden = params.get('orden') || 'valor';
+    window.location = `/clientes?q=${encodeURIComponent(q)}&estado=${estado}&sector=${encodeURIComponent(sector)}&orden=${orden}`;
+}
+
+function setOrden(orden) {
+    const q = document.getElementById('buscar').value;
+    const estado = document.getElementById('filtroEstado').value;
+    const sector = document.getElementById('filtroSector').value;
+    window.location = `/clientes?q=${encodeURIComponent(q)}&estado=${estado}&sector=${encodeURIComponent(sector)}&orden=${orden}`;
+}
+
+function limpiarFiltros() {
+    window.location = '/clientes';
+}
+
+async function crearCliente() {
+    const nombre = document.getElementById('nc-nombre').value.trim();
+    if (!nombre) { toast('El nombre es obligatorio', 'error'); return; }
+    const res = await api('/api/cliente', 'POST', {
+        nombre,
+        empresa: document.getElementById('nc-empresa').value,
+        email: document.getElementById('nc-email').value,
+        telefono: document.getElementById('nc-tel').value,
+        sector: document.getElementById('nc-sector').value,
+        estado: document.getElementById('nc-estado').value,
+        valor_potencial: document.getElementById('nc-valor').value || 0,
+        notas: document.getElementById('nc-notas').value,
+    });
+    if (res.ok) { toast('Cliente creado'); setTimeout(() => location.reload(), 900); }
+    else toast('Error al crear cliente', 'error');
+}
+
+async function eliminarCliente(id, nombre) {
+    if (!confirm(`¿Eliminar a ${nombre} y todos sus datos? Esta acción no se puede deshacer.`)) return;
+    const res = await api(`/api/cliente/${id}`, 'DELETE');
+    if (res.ok) { toast('Cliente eliminado'); setTimeout(() => location.reload(), 900); }
+    else toast('Error al eliminar', 'error');
+}
+</script>
+{% endblock %}
